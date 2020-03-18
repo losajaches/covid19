@@ -1,28 +1,60 @@
 <?php
 $data1=array();
-$f=file("https://covid.ourworldindata.org/data/new_deaths.csv");
-
-$data=array();
+$f=file("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_19-covid-Deaths.csv");
 foreach($f as $i=>$l){
 	$s=str_replace(array("\r","\n"),array("",""),$l);
-	
 	if($i==0){
-		$keys=explode(",",$s);	
+		$keys=explode(",",$s);
 	}else{
-		$values=explode(",",$s);
-		$linea=array_combine($keys,$values);
-		foreach($linea as $k=>$v){
-			if($k!="date"){
-				if(!isset($data[$k])){
-					$data[$k]=array("total"=>0,"dias"=>array());
-				}
-				$data[$k]["dias"][$linea["date"]]=($v=="")?0:1*$v;
-				$data[$k]["total"]+=($v=="")?0:1*$v;
+		$valores=explode(",",$s);
+		$a=array_combine($keys,$valores);
+		
+		unset($a["Lat"]);
+		unset($a["Long"]);
+		unset($a["Province/State"]);
+		$a["pais"]=$a["Country/Region"];
+		unset($a["Country/Region"]);
+		
+		foreach($a as $k=>$v){
+			if($k!="pais"){
+				list($m,$d,$y)=explode("/",$k);
+				$fec=sprintf("20%d-%02d-%02d",$y,$m,$d);
+				$a[$fec]=$v;
+				unset($a[$k]);
 			}
+		}
+		
+		$data1[]=$a;
+	}
+}
+//agrupamos por pais
+$data=array();
+foreach($data1 as $d){
+	
+	$pais=$d["pais"];
+	unset($d["pais"]);
+	
+	if(!isset($data[$pais])){
+		$data[$pais]=$d;
+	}else{
+		foreach($d as $i=>$v){
+			$data[$pais][$i]+=$v;	
 		}
 	}
 }
+//cambiamos a fallecidos distintos diarios, no fallecidos totales acumulados diarios
+foreach($data as $pais=>$d){
+	$ff=0;
+	foreach($d as $dia=>$fallecidos){
+		$data[$pais][$dia]=$fallecidos-$ff;
+		$ff+=$data[$pais][$dia];
+	}
+}
 
+//sumamos
+foreach($data as $pais=>$d){
+	$data[$pais]["total"]=array_sum($d);
+}
 //ordenamos por total de fallecidos
 uasort($data,function($a,$b){
 	if ($a["total"] == $b["total"]) {
@@ -71,8 +103,8 @@ uasort($data,function($a,$b){
 			<div class='col'>
 				<div class='text-center'>
 					<small style='font-size:.7em;'>
-						<a href='https://covid.ourworldindata.org/data/new_deaths.csv' target='_blank'>fichero csv</a> | 
-						<a href='https://www.who.int/emergencies/diseases/novel-coronavirus-2019/situation-reports/' target='_blank'>Ir a https://www.who.int/emergencies/diseases/novel-coronavirus-2019/situation-reports/</a> | 
+						<a href='https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_19-covid-Deaths.csv' target='_blank'>fichero csv</a> | 
+						<a href='https://systems.jhu.edu/research/public-health/ncov/' target='_blank'>Ir a https://systems.jhu.edu/research/public-health/ncov/</a> | 
 						<a href='https://github.com/losajaches/covid19' target='_blank'>Fuente del programa en GitHub</a>
 					</small>
 					<br>
@@ -97,11 +129,13 @@ uasort($data,function($a,$b){
 								echo "<thead>";
 								echo "<th class='text-center'><input type='checkbox' checked></th>";
 								echo "<th>País</th>";
-								echo "<th>Total</th>";
-								
-								foreach(array_reverse($d["dias"],true) as $k=>$v){
-									$s=explode("-",$k);
-									$s=sprintf("%02d<br><small>%s</small>",$s[2],$meses[1*$s[1]]);
+								foreach(array_reverse($d,true) as $k=>$v){
+									if($k=="total"){
+										$s="Total";
+									}else{
+										$s=explode("-",$k);
+										$s=sprintf("%02d<br><small>%s</small>",$s[2],$meses[1*$s[1]]);
+									}
 									echo "<td class='text-center'>$s</td>";
 								}
 								echo "</thead>";
@@ -110,10 +144,9 @@ uasort($data,function($a,$b){
 							
 							
 							echo "<tr>";
-							echo sprintf("<td class='text-center'><input type='checkbox' %s data-pais='$pais'></td>",(($i>0)&&($i<6))?"checked":"");
+							echo sprintf("<td class='text-center'><input type='checkbox' %s data-pais='$pais'></td>",($i<5)?"checked":"");
 							echo sprintf("<td >%s</td>",substr(str_replace(" ","·",$pais),0,15));
-							echo sprintf("<td class='text-right %s'>%s</td>",($k=="total")?"font-weight-bold":"",number_format($d["total"],0,",","."));
-							foreach(array_reverse($d["dias"],true) as $k=>$v){
+							foreach(array_reverse($d,true) as $k=>$v){
 								echo sprintf("<td class='text-right %s'>%s</td>",($k=="total")?"font-weight-bold":"",($v==0)?"":number_format($v,0,",","."));
 							}
 							echo "</tr>";	
@@ -148,7 +181,7 @@ uasort($data,function($a,$b){
 			$("table tbody input:checked").each(function(){
 				var pais=$(this).data("pais");
 				primer_dia[pais]=null;
-				$.each(DATA[pais]["dias"],function(i,v){
+				$.each(DATA[pais],function(i,v){
 					if((i!="total")&&(v!=0)&&(primer_dia[pais]==null)){
 						primer_dia[pais]=1*i.replace(/\-/g,'');
 					}
@@ -161,16 +194,17 @@ uasort($data,function($a,$b){
 				}
 			});
 			primer_dia=p;
+			console.log(primer_dia);
 			//creamos las series
 			$("table tbody input:checked").each(function(){
 				var pais=$(this).data("pais");
-				var t=$.map(DATA[pais]["dias"], function(n, i) { return i; }).length;
+				var t=$.map(DATA[pais], function(n, i) { return i; }).length;
 				
 				var d=[];
 				var dT=[];
 				categorias=[];
 				vt=0;
-				$.each(DATA[pais]["dias"],function(i,v){
+				$.each(DATA[pais],function(i,v){
 					if(i!="total"){
 						var ii=1*i.replace(/\-/g,'');
 						if(ii>=primer_dia){
@@ -188,6 +222,7 @@ uasort($data,function($a,$b){
 					type: 'area',
 					yAxis:1,
 					"data":dT,
+					
 					lineWidth: 0,
 					color: Highcharts.getOptions().colors[index_color],
 			        fillOpacity: 0.3,
@@ -218,6 +253,7 @@ uasort($data,function($a,$b){
 				
 				index_color++;
 			});
+			
 			Highcharts.chart('container', {
 			    chart: {
 			        
