@@ -8,8 +8,22 @@ foreach($f as $i=>$l){
 	}else{
 		$valores=explode(",",$s);
 		$a=array_combine($keys,$valores);
+		
 		unset($a["Lat"]);
 		unset($a["Long"]);
+		unset($a["Province/State"]);
+		$a["pais"]=$a["Country/Region"];
+		unset($a["Country/Region"]);
+		
+		foreach($a as $k=>$v){
+			if($k!="pais"){
+				list($m,$d,$y)=explode("/",$k);
+				$fec=sprintf("20%d-%02d-%02d",$y,$m,$d);
+				$a[$fec]=$v;
+				unset($a[$k]);
+			}
+		}
+		
 		$data1[]=$a;
 	}
 }
@@ -17,10 +31,8 @@ foreach($f as $i=>$l){
 $data=array();
 foreach($data1 as $d){
 	
-	$pais=$d["Country/Region"];
-	
-	unset($d["Province/State"]);
-	unset($d["Country/Region"]);
+	$pais=$d["pais"];
+	unset($d["pais"]);
 	
 	if(!isset($data[$pais])){
 		$data[$pais]=$d;
@@ -66,23 +78,34 @@ uasort($data,function($a,$b){
 			padding-top:52px;
 		}
 		table{
-			font-size:.8em;
+			font-size:.7em;
 		}
 	</style>
   </head>
   <body>
     <header>
-		<nav class="navbar navbar-expand-md navbar-dark fixed-top bg-dark">
+		<nav id='MainNav' class="navbar navbar-expand-md navbar-dark fixed-top bg-dark">
 			<a class="navbar-brand" href="#">COVID19 - Fallecimientos País/Día</a>
+			
+			<button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+				<span class="navbar-toggler-icon"></span>
+			</button>
+			
+			<div class="collapse navbar-collapse" id="navbarSupportedContent">
+				<ul class="navbar-nav mr-auto">
+			    </ul>
+			    <small style='color:#ffcc80;font-size:.6em;' class='text-right'>José Manuel Rodríguez Sánchez<br><a href='mailto:adharis.net@gmail.com' style='color:#ffebcc;'>adharis.net@gmail.com</a></small>
+			</div>
 		</nav>
 	</header>
-	<div class='container-fluid pt-2'>
-		<div class='row info'>
+	<div id='MainForm' class='container-fluid pt-2' style='min-height:500px;'>
+		<div id='MainFormTop' class='row info'>
 			<div class='col'>
 				<div class='text-center'>
 					<small style='font-size:.7em;'>
 						<a href='https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_19-covid-Deaths.csv' target='_blank'>fichero csv</a> | 
-						<a href='https://systems.jhu.edu/research/public-health/ncov/' target='_blank'>Ir a https://systems.jhu.edu/research/public-health/ncov/</a>
+						<a href='https://systems.jhu.edu/research/public-health/ncov/' target='_blank'>Ir a https://systems.jhu.edu/research/public-health/ncov/</a> | 
+						<a href='https://github.com/losajaches/covid19' target='_blank'>Fuente del programa en GitHub</a>
 					</small>
 					<br>
 					<label><input type='checkbox' id='ShowDiario' checked>Mostrar fallecimientos diarios</label>&nbsp;&nbsp;
@@ -90,11 +113,11 @@ uasort($data,function($a,$b){
 				</div>
 			</div>
 		</div>
-		<div class='row'>
-			<div class='col-sm-6'>
-				<div id="container" style='min-height:500px;'></div>
+		<div id='MainFormData' class='row'>
+			<div class='col-sm-7 pr-0'>
+				<div id="container"></div>
 			</div>
-			<div class='col-sm-6'>
+			<div class='col-sm-5 pl-0'>
 				<div class='table-responsive'>
 				<table class="table table-bordered table-sm table-striped table-hover">
 					<?php
@@ -104,13 +127,14 @@ uasort($data,function($a,$b){
 						if($d["total"]>0){
 							if($i==0){
 								echo "<thead>";
-								echo "<th><label><input type='checkbox' checked>País</label></th>";
+								echo "<th class='text-center'><input type='checkbox' checked></th>";
+								echo "<th>País</th>";
 								foreach(array_reverse($d,true) as $k=>$v){
 									if($k=="total"){
 										$s="Total";
 									}else{
-										$s=explode("/",$k);
-										$s=sprintf("%02d<br><small>%s</small>",$s[1],$meses[$s[0]]);
+										$s=explode("-",$k);
+										$s=sprintf("%02d<br><small>%s</small>",$s[2],$meses[1*$s[1]]);
 									}
 									echo "<td class='text-center'>$s</td>";
 								}
@@ -120,7 +144,8 @@ uasort($data,function($a,$b){
 							
 							
 							echo "<tr>";
-							echo sprintf("<td><label><input type='checkbox' %s data-pais='$pais'>$pais</label></td>",($i<5)?"checked":"");
+							echo sprintf("<td class='text-center'><input type='checkbox' %s data-pais='$pais'></td>",($i<5)?"checked":"");
+							echo sprintf("<td >%s</td>",substr(str_replace(" ","·",$pais),0,15));
 							foreach(array_reverse($d,true) as $k=>$v){
 								echo sprintf("<td class='text-right %s'>%s</td>",($k=="total")?"font-weight-bold":"",($v==0)?"":number_format($v,0,",","."));
 							}
@@ -144,22 +169,33 @@ uasort($data,function($a,$b){
 	<script>
 		var DATA=<?php echo json_encode($data);?>;
 		
-		function normalizar(vector){
-			var v=[];
-			var radio = Math.max.apply(this, vector) / 100;	
-			for(var i = 0; i<vector.length;i++) {
-			    v.push(Math.round(vector[i] / radio));
-			}
-			return v;
-		}
 			
-		function plotear(){
+		function MostrarGrafica(){
 			var series=[];
 			var categorias=[];
 			var index_color=0;
 			var ShowAcumulado=$("#ShowAcumulado").prop("checked");
 			var ShowDiario=$("#ShowDiario").prop("checked");
-			
+			//buscamos el primer día con datos de cualquiera de los paises seleccionados
+			var primer_dia={};
+			$("table tbody input:checked").each(function(){
+				var pais=$(this).data("pais");
+				primer_dia[pais]=null;
+				$.each(DATA[pais],function(i,v){
+					if((i!="total")&&(v!=0)&&(primer_dia[pais]==null)){
+						primer_dia[pais]=1*i.replace(/\-/g,'');
+					}
+				});
+			});
+			var p="99999999";
+			$.each(primer_dia,function(i,v){
+				if(v<p){
+					p=v;
+				}
+			});
+			primer_dia=p;
+			console.log(primer_dia);
+			//creamos las series
 			$("table tbody input:checked").each(function(){
 				var pais=$(this).data("pais");
 				var t=$.map(DATA[pais], function(n, i) { return i; }).length;
@@ -170,13 +206,16 @@ uasort($data,function($a,$b){
 				vt=0;
 				$.each(DATA[pais],function(i,v){
 					if(i!="total"){
-						d.push(v);
-						vt+=v;
-						dT.push(vt);
-						var fecha=i.split("/")
-						categorias.push(fecha[1]+"/"+fecha[0]+'/'+fecha[2]);
+						var ii=1*i.replace(/\-/g,'');
+						if(ii>=primer_dia){
+							d.push(v);
+							vt+=v;
+							dT.push(vt);
+							var fecha=i.split("-")
+							categorias.push(fecha[2]+"/"+fecha[1]+"/"+fecha[0]);
+						}
 					}
-				})
+				});
 				
 				var s_acumulado={
 					"name": pais,
@@ -213,11 +252,6 @@ uasort($data,function($a,$b){
 				}
 				
 				index_color++;
-				/*
-				series.push({
-					"name": pais+"(N)",	
-					"data":normalizar(dT)
-				});*/
 			});
 			
 			Highcharts.chart('container', {
@@ -248,29 +282,32 @@ uasort($data,function($a,$b){
 			});
 		}
 		function redimensionar(){
-			$("#container").height($(window).innerHeight()-$("header").height()-$("div.info").height()-60);
+			$("#MainForm").height($(window).innerHeight()-$("#MainNav").height()-30);
+			$("#MainFormData").height($("#MainForm").height()-$("#MainFormTop").height());
+			$("#container").height($("#MainFormData").height());
+			$(".table-responsive").height($("#MainFormData").height());
 		}
 		
 		$( document ).ready(function() {
     		$("table thead input[type='checkbox']").click(function(){
     			$("table tbody input[type='checkbox']").prop("checked",$(this).prop("checked"));
-    			plotear();
+    			MostrarGrafica();
     		});
     		$("table tbody input[type='checkbox']").click(function(){
-    			plotear();
+    			MostrarGrafica();
     		});
     		$("#ShowDiario").click(function(){
-    			plotear();
+    			MostrarGrafica();
     		});
     		$("#ShowAcumulado").click(function(){
-    			plotear();
+    			MostrarGrafica();
     		});
     		
     		$(window).resize(function() {
 			  redimensionar();
 			});
 			redimensionar();
-    		plotear();
+    		MostrarGrafica();
 		});
 	</script>
 </html>
