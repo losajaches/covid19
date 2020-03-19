@@ -1,67 +1,111 @@
 <?php
-$data1=array();
-$f=file("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_19-covid-Deaths.csv");
-foreach($f as $i=>$l){
-	$s=str_replace(array("\r","\n"),array("",""),$l);
-	if($i==0){
-		$keys=explode(",",$s);
-	}else{
-		$valores=explode(",",$s);
-		$a=array_combine($keys,$valores);
+function ProcesarFichero($file_name){
+	$data1=array();
+	$f=file($file_name);
+	foreach($f as $i=>$l){
+		$s=str_replace(array("\r","\n"),array("",""),$l);
+		if($i==0){
+			$keys=explode(",",$s);
+		}else{
+			$valores=explode(",",$s);
+			$a=array_combine($keys,$valores);
+			
+			unset($a["Lat"]);
+			unset($a["Long"]);
+			unset($a["Province/State"]);
+			$a["pais"]=$a["Country/Region"];
+			unset($a["Country/Region"]);
+			
+			foreach($a as $k=>$v){
+				if($k!="pais"){
+					list($m,$d,$y)=explode("/",$k);
+					$fec=sprintf("20%d-%02d-%02d",$y,$m,$d);
+					$a[$fec]=$v;
+					unset($a[$k]);
+				}
+			}
+			
+			$data1[]=$a;
+		}
+	}
+	//agrupamos por pais
+	$data=array();
+	foreach($data1 as $d){
 		
-		unset($a["Lat"]);
-		unset($a["Long"]);
-		unset($a["Province/State"]);
-		$a["pais"]=$a["Country/Region"];
-		unset($a["Country/Region"]);
+		$pais=$d["pais"];
+		unset($d["pais"]);
 		
-		foreach($a as $k=>$v){
-			if($k!="pais"){
-				list($m,$d,$y)=explode("/",$k);
-				$fec=sprintf("20%d-%02d-%02d",$y,$m,$d);
-				$a[$fec]=$v;
-				unset($a[$k]);
+		if(!isset($data[$pais])){
+			$data[$pais]=$d;
+		}else{
+			foreach($d as $i=>$v){
+				$data[$pais][$i]+=$v;	
 			}
 		}
-		
-		$data1[]=$a;
 	}
-}
-//agrupamos por pais
-$data=array();
-foreach($data1 as $d){
-	
-	$pais=$d["pais"];
-	unset($d["pais"]);
-	
-	if(!isset($data[$pais])){
-		$data[$pais]=$d;
-	}else{
-		foreach($d as $i=>$v){
-			$data[$pais][$i]+=$v;	
+	//cambiamos a fallecidos distintos diarios, no fallecidos totales acumulados diarios
+	foreach($data as $pais=>$d){
+		$ff=0;
+		foreach($d as $dia=>$fallecidos){
+			$data[$pais][$dia]=$fallecidos-$ff;
+			$ff+=$data[$pais][$dia];
 		}
 	}
-}
-//cambiamos a fallecidos distintos diarios, no fallecidos totales acumulados diarios
-foreach($data as $pais=>$d){
-	$ff=0;
-	foreach($d as $dia=>$fallecidos){
-		$data[$pais][$dia]=$fallecidos-$ff;
-		$ff+=$data[$pais][$dia];
+	
+	//sumamos
+	foreach($data as $pais=>$d){
+		$data[$pais]["total"]=array_sum($d);
 	}
+	//ordenamos por total de fallecidos
+	uasort($data,function($a,$b){
+		if ($a["total"] == $b["total"]) {
+	        return 0;
+	    }
+	    return ($a["total"] > $b["total"]) ? -1 : 1;
+	});	
+	return $data;
 }
 
-//sumamos
-foreach($data as $pais=>$d){
-	$data[$pais]["total"]=array_sum($d);
+$data_fallecidos=ProcesarFichero("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_19-covid-Deaths.csv");
+$data_contagiados=ProcesarFichero("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_19-covid-Confirmed.csv");
+
+$bigdata=array();
+foreach($data_contagiados as $pais=>$data){
+	$total_contagios=$data["total"];
+	$total_fallecidos=isset($data_fallecidos[$pais])?$data_fallecidos[$pais]["total"]:0;
+	$bigdata[$pais]=array(
+		"contagiados"=>array("total"=>$total_contagios,"dias"=>array()),
+		"fallecidos"=>array("total"=>$total_fallecidos,"dias"=>array()),
+		"acum_contagiados"=>array("total"=>$total_contagios,"dias"=>array()),
+		"acum_fallecidos"=>array("total"=>$total_fallecidos,"dias"=>array()),
+		"tasa"=>array("total"=>($total_contagios==0)?0:round(100*$total_fallecidos/$total_contagios,2),"dias"=>array())
+	);
+	$f=strtotime("2020-01-22");
+	$ff=strtotime(date("Y-m-d"));
+	$i=0;
+	$acum_contagiados=0;
+	$acum_fallecidos=0;
+	
+	while($f<$ff){
+		$k=date("Y-m-d",$f);
+		$k=date("Y-m-d",$f);
+		$contagiados=(isset($data_contagiados[$pais]) && isset($data_contagiados[$pais][$k]))?$data_contagiados[$pais][$k]:0;
+		$fallecidos=(isset($data_fallecidos[$pais]) && isset($data_fallecidos[$pais][$k]))?$data_fallecidos[$pais][$k]:0;
+		
+		$acum_contagiados+=$contagiados;
+		$acum_fallecidos+=$fallecidos;
+		
+		$bigdata[$pais]["contagiados"]["dias"][$k]= $contagiados;
+		$bigdata[$pais]["fallecidos"]["dias"][$k]=  $fallecidos;
+		
+		$bigdata[$pais]["acum_contagiados"]["dias"][$k]= $acum_contagiados;
+		$bigdata[$pais]["acum_fallecidos"]["dias"][$k]=  $acum_fallecidos;
+		
+		$bigdata[$pais]["tasa"]["dias"][$k]=  ($acum_contagiados==0)?0:round(100*$acum_fallecidos/$acum_contagiados,2);
+		$f=strtotime('+1 day', $f);
+	}
+
 }
-//ordenamos por total de fallecidos
-uasort($data,function($a,$b){
-	if ($a["total"] == $b["total"]) {
-        return 0;
-    }
-    return ($a["total"] > $b["total"]) ? -1 : 1;
-});
 
 ?>
 <!doctype html>
@@ -123,19 +167,16 @@ uasort($data,function($a,$b){
 					<?php
 					$meses=array("","Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic");
 					$i=0;
-					foreach($data as $pais=>$d){
-						if($d["total"]>0){
+					foreach($bigdata as $pais=>$d){
+						if($d["fallecidos"]["total"]>0){
 							if($i==0){
 								echo "<thead>";
 								echo "<th class='text-center'><input type='checkbox' checked></th>";
 								echo "<th>País</th>";
-								foreach(array_reverse($d,true) as $k=>$v){
-									if($k=="total"){
-										$s="Total";
-									}else{
-										$s=explode("-",$k);
-										$s=sprintf("%02d<br><small>%s</small>",$s[2],$meses[1*$s[1]]);
-									}
+								echo "<th>Total</th>";
+								foreach(array_reverse($d["fallecidos"]["dias"],true) as $k=>$v){
+									$s=explode("-",$k);
+									$s=sprintf("%02d<br><small>%s</small>",$s[2],$meses[1*$s[1]]);
 									echo "<td class='text-center'>$s</td>";
 								}
 								echo "</thead>";
@@ -146,8 +187,15 @@ uasort($data,function($a,$b){
 							echo "<tr>";
 							echo sprintf("<td class='text-center'><input type='checkbox' %s data-pais='$pais'></td>",($i<5)?"checked":"");
 							echo sprintf("<td >%s</td>",substr(str_replace(" ","·",$pais),0,15));
-							foreach(array_reverse($d,true) as $k=>$v){
-								echo sprintf("<td class='text-right %s'>%s</td>",($k=="total")?"font-weight-bold":"",($v==0)?"":number_format($v,0,",","."));
+							echo sprintf("<td class='text-right font-weight-bold'>%s</td>",$d["fallecidos"]["total"]);
+							foreach(array_reverse($d["fallecidos"]["dias"],true) as $k=>$v){
+								$contagiados=isset($d["contagiados"]["dias"][$k])?$d["contagiados"]["dias"][$k]:0;
+								$tasa=isset($d["tasa"]["dias"][$k])?$d["tasa"]["dias"][$k]:0;
+								echo sprintf("<td class='text-right'>%s<br><small>+%s i:%s</small></td>",
+									($v==0)?"":number_format($v,0,",","."),
+									($contagiados==0)?"":number_format($contagiados,0,",","."),
+									($tasa==0)?"":number_format($tasa,2,",",".")."%"
+								);
 							}
 							echo "</tr>";	
 							$i++;
@@ -167,7 +215,7 @@ uasort($data,function($a,$b){
 	<script src="https://code.highcharts.com/modules/export-data.js"></script>
 	<script src="https://code.highcharts.com/modules/accessibility.js"></script>
 	<script>
-		var DATA=<?php echo json_encode($data);?>;
+		var DATA=<?php echo json_encode($bigdata);?>;
 		
 			
 		function MostrarGrafica(){
@@ -181,8 +229,8 @@ uasort($data,function($a,$b){
 			$("table tbody input:checked").each(function(){
 				var pais=$(this).data("pais");
 				primer_dia[pais]=null;
-				$.each(DATA[pais],function(i,v){
-					if((i!="total")&&(v!=0)&&(primer_dia[pais]==null)){
+				$.each(DATA[pais]["fallecidos"]["dias"],function(i,v){
+					if((v!=0)&&(primer_dia[pais]==null)){
 						primer_dia[pais]=1*i.replace(/\-/g,'');
 					}
 				});
@@ -194,27 +242,26 @@ uasort($data,function($a,$b){
 				}
 			});
 			primer_dia=p;
-			console.log(primer_dia);
 			//creamos las series
 			$("table tbody input:checked").each(function(){
 				var pais=$(this).data("pais");
-				var t=$.map(DATA[pais], function(n, i) { return i; }).length;
+				var t=$.map(DATA[pais]["fallecidos"]["dias"], function(n, i) { return i; }).length;
 				
 				var d=[];
 				var dT=[];
 				categorias=[];
 				vt=0;
-				$.each(DATA[pais],function(i,v){
-					if(i!="total"){
-						var ii=1*i.replace(/\-/g,'');
-						if(ii>=primer_dia){
-							d.push(v);
-							vt+=v;
-							dT.push(vt);
-							var fecha=i.split("-")
-							categorias.push(fecha[2]+"/"+fecha[1]+"/"+fecha[0]);
-						}
+				$.each(DATA[pais]["fallecidos"]["dias"],function(i,v){
+					
+					var ii=1*i.replace(/\-/g,'');
+					if(ii>=primer_dia){
+						d.push(v);
+						vt+=v;
+						dT.push(vt);
+						var fecha=i.split("-")
+						categorias.push(fecha[2]+"/"+fecha[1]+"/"+fecha[0]);
 					}
+					
 				});
 				
 				var s_acumulado={
