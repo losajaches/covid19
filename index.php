@@ -65,13 +65,19 @@ function ProcesarFichero($file_name){
 	});	
 	return $data;
 }
-
-$data_fallecidos=ProcesarFichero("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_19-covid-Deaths.csv");
-$data_contagiados=ProcesarFichero("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_19-covid-Confirmed.csv");
+if(isset($_GET["ccaa"])){
+	$data_fallecidos=ProcesarFichero("spain-ccaa-death.csv");
+	$data_contagiados=ProcesarFichero("spain-ccaa-infec.csv");
+	
+}else{
+	$data_fallecidos=ProcesarFichero("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_19-covid-Deaths.csv");
+	$data_contagiados=ProcesarFichero("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_19-covid-Confirmed.csv");
+}
 
 $bigdata=array();
-foreach($data_contagiados as $pais=>$data){
+foreach($data_fallecidos as $pais=>$data){
 	$total_contagios=$data["total"];
+	$total_contagios=isset($data_contagiados[$pais])?$data_contagiados[$pais]["total"]:0;
 	$total_fallecidos=isset($data_fallecidos[$pais])?$data_fallecidos[$pais]["total"]:0;
 	$bigdata[$pais]=array(
 		"contagiados"=>array("total"=>$total_contagios,"dias"=>array()),
@@ -137,6 +143,12 @@ foreach($data_contagiados as $pais=>$data){
 			
 			<div class="collapse navbar-collapse" id="navbarSupportedContent">
 				<ul class="navbar-nav mr-auto">
+					<li class="nav-item">
+				    	<a class="nav-link <?php echo (isset($_GET["ccaa"]))?"":"active";?>" href="index.php">Paises</span></a>
+				    </li>
+				    <li class="nav-item">
+				    	<a class="nav-link <?php echo (isset($_GET["ccaa"]))?"active":"";?>" href="index.php?ccaa=1">España CCAA</span></a>
+				    </li>
 			    </ul>
 			    <small style='color:#ffcc80;font-size:.6em;' class='text-right'>José Manuel Rodríguez Sánchez<br><a href='mailto:adharis.net@gmail.com' style='color:#ffebcc;'>adharis.net@gmail.com</a></small>
 			</div>
@@ -172,7 +184,7 @@ foreach($data_contagiados as $pais=>$data){
 							if($i==0){
 								echo "<thead>";
 								echo "<th class='text-center'><input type='checkbox' checked></th>";
-								echo "<th>País</th>";
+								echo "<th>".((isset($_GET["ccaa"]))?"C.C.A.A":"País")."</th>";
 								echo "<th>Total</th>";
 								foreach(array_reverse($d["fallecidos"]["dias"],true) as $k=>$v){
 									$s=explode("-",$k);
@@ -191,10 +203,10 @@ foreach($data_contagiados as $pais=>$data){
 							foreach(array_reverse($d["fallecidos"]["dias"],true) as $k=>$v){
 								$contagiados=isset($d["contagiados"]["dias"][$k])?$d["contagiados"]["dias"][$k]:0;
 								$tasa=isset($d["tasa"]["dias"][$k])?$d["tasa"]["dias"][$k]:0;
-								echo sprintf("<td class='text-right'>%s<br><small>+%s i:%s</small></td>",
+								echo sprintf("<td class='text-right'>%s<br><small title='Nuevos casos y tasa de fallecidos vs contagiados'>%s%s</small></td>",
 									($v==0)?"":number_format($v,0,",","."),
-									($contagiados==0)?"":number_format($contagiados,0,",","."),
-									($tasa==0)?"":number_format($tasa,2,",",".")."%"
+									($contagiados==0)?"":"+".number_format($contagiados,0,",","."),
+									($tasa==0)?"":" i:".number_format($tasa,2,",",".")."%"
 								);
 							}
 							echo "</tr>";	
@@ -328,6 +340,8 @@ foreach($data_contagiados as $pais=>$data){
 			    "series": series
 			});
 		}
+		
+		
 		function redimensionar(){
 			$("#MainForm").height($(window).innerHeight()-$("#MainNav").height()-30);
 			$("#MainFormData").height($("#MainForm").height()-$("#MainFormTop").height());
