@@ -1,7 +1,11 @@
 <?php
-function ProcesarFichero($file_name){
+function ProcesarFichero($file_name,$fileContent=""){
 	$data1=array();
-	$f=file($file_name);
+	if($file_name==""){
+		$f=$fileContent;
+	}else{
+		$f=file($file_name);
+	}
 	foreach($f as $i=>$l){
 		$s=str_replace(array("\r","\n"),array("",""),$l);
 		if($i==0){
@@ -66,9 +70,10 @@ function ProcesarFichero($file_name){
 	return $data;
 }
 if(isset($_GET["ccaa"])){
-	$data_fallecidos=ProcesarFichero("spain-ccaa-death.csv");
-	$data_contagiados=ProcesarFichero("spain-ccaa-infec.csv");
-	
+	include("get.spain.data.php");
+	$SpainData=GetSpainData();
+	$data_fallecidos=ProcesarFichero("",$SpainData["fallecidos"]);
+	$data_contagiados=ProcesarFichero("",$SpainData["contagiados"]);
 }else{
 	$data_fallecidos=ProcesarFichero("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_19-covid-Deaths.csv");
 	$data_contagiados=ProcesarFichero("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_19-covid-Confirmed.csv");
@@ -170,7 +175,7 @@ foreach($data_fallecidos as $pais=>$data){
 				</ul>
 				<ul class="navbar-nav">
 					<a class="btn btn-outline-secondary mr-1 <?php echo (isset($_GET["ccaa"]))?"":"active";?>" href="index.php">PAISES</span></a>
-				    <a class="btn btn-outline-secondary mr-1<?php echo (isset($_GET["ccaa"]))?"active":"";?>" href="index.php?ccaa=1">ESPAÑA</span></a>
+				    <a class="btn btn-outline-secondary mr-1 <?php echo (isset($_GET["ccaa"]))?"active":"";?>" href="index.php?ccaa=1">ESPAÑA</span></a>
 				    <a class="btn btn-outline-warning" href="https://github.com/losajaches/covid19" target='_blank'>&copy;</span></a>
 			    </ul>
 			</div>
