@@ -130,12 +130,36 @@ foreach($data_fallecidos as $pais=>$data){
 		table{
 			font-size:.7em;
 		}
+		.nav-link{
+			
+		}
+		.titulo_1{
+			font-weight:bold;
+			color:#ffcc80;	
+			font-size:1em;
+		}
+		.titulo_2{
+			font-weight:bold;
+			color:#ffebcc;	
+			font-size:.4em;
+		}
+		.nav-link1{
+			font-weight:bold;
+			font-size:1.2em;
+		}
+		.nav-link1.active{
+			text-decoration: underline;
+			font-weight:bold;
+		}
 	</style>
   </head>
   <body>
     <header>
 		<nav id='MainNav' class="navbar navbar-expand-md navbar-dark fixed-top bg-dark">
-			<a class="navbar-brand" href="#">COVID19 - Fallecimientos País/Día</a>
+			<a class="navbar-brand" href="#">
+				<span class='titulo_1'>COVID-19</span>
+				<span class='titulo_2'>ESTADISTICAS</span>
+			</a>
 			
 			<button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
 				<span class="navbar-toggler-icon"></span>
@@ -143,14 +167,12 @@ foreach($data_fallecidos as $pais=>$data){
 			
 			<div class="collapse navbar-collapse" id="navbarSupportedContent">
 				<ul class="navbar-nav mr-auto">
-					<li class="nav-item">
-				    	<a class="nav-link <?php echo (isset($_GET["ccaa"]))?"":"active";?>" href="index.php">Paises</span></a>
-				    </li>
-				    <li class="nav-item">
-				    	<a class="nav-link <?php echo (isset($_GET["ccaa"]))?"active":"";?>" href="index.php?ccaa=1">España CCAA</span></a>
-				    </li>
+				</ul>
+				<ul class="navbar-nav">
+					<a class="btn btn-outline-secondary mr-1 <?php echo (isset($_GET["ccaa"]))?"":"active";?>" href="index.php">PAISES</span></a>
+				    <a class="btn btn-outline-secondary mr-1<?php echo (isset($_GET["ccaa"]))?"active":"";?>" href="index.php?ccaa=1">ESPAÑA</span></a>
+				    <a class="btn btn-outline-warning" href="https://github.com/losajaches/covid19" target='_blank'>&copy;</span></a>
 			    </ul>
-			    <small style='color:#ffcc80;font-size:.6em;' class='text-right'>José Manuel Rodríguez Sánchez<br><a href='mailto:adharis.net@gmail.com' style='color:#ffebcc;'>adharis.net@gmail.com</a></small>
 			</div>
 		</nav>
 	</header>
@@ -158,12 +180,6 @@ foreach($data_fallecidos as $pais=>$data){
 		<div id='MainFormTop' class='row info'>
 			<div class='col'>
 				<div class='text-center'>
-					<small style='font-size:.7em;'>
-						<a href='https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_19-covid-Deaths.csv' target='_blank'>fichero csv</a> | 
-						<a href='https://systems.jhu.edu/research/public-health/ncov/' target='_blank'>Ir a https://systems.jhu.edu/research/public-health/ncov/</a> | 
-						<a href='https://github.com/losajaches/covid19' target='_blank'>Fuente del programa en GitHub</a>
-					</small>
-					<br>
 					<label><input type='checkbox' id='ShowDiario' checked>Mostrar fallecimientos diarios</label>&nbsp;&nbsp;
 					<label><input type='checkbox' id='ShowAcumulado' checked>Mostrar fallecimientos acumulados diarios</label>
 				</div>
@@ -181,11 +197,13 @@ foreach($data_fallecidos as $pais=>$data){
 					$i=0;
 					foreach($bigdata as $pais=>$d){
 						if($d["fallecidos"]["total"]>0){
+							
 							if($i==0){
+								$Nombre=(isset($_GET["ccaa"]))?"ESPAÑA":"País";
 								echo "<thead>";
 								echo "<th class='text-center'><input type='checkbox' checked></th>";
-								echo "<th>".((isset($_GET["ccaa"]))?"C.C.A.A":"País")."</th>";
-								echo "<th>Total</th>";
+								echo "<th>$Nombre</th>";
+								echo "<th>Total<br>Fallecidos</th>";
 								foreach(array_reverse($d["fallecidos"]["dias"],true) as $k=>$v){
 									$s=explode("-",$k);
 									$s=sprintf("%02d<br><small>%s</small>",$s[2],$meses[1*$s[1]]);
@@ -203,7 +221,7 @@ foreach($data_fallecidos as $pais=>$data){
 							foreach(array_reverse($d["fallecidos"]["dias"],true) as $k=>$v){
 								$contagiados=isset($d["contagiados"]["dias"][$k])?$d["contagiados"]["dias"][$k]:0;
 								$tasa=isset($d["tasa"]["dias"][$k])?$d["tasa"]["dias"][$k]:0;
-								echo sprintf("<td class='text-right'>%s<br><small title='Nuevos casos y tasa de fallecidos vs contagiados'>%s%s</small></td>",
+								echo sprintf("<td class='text-right'>%s<br><small title='Nuevos casos y tasa de fallecidos por contagiados'>%s%s</small></td>",
 									($v==0)?"":number_format($v,0,",","."),
 									($contagiados==0)?"":"+".number_format($contagiados,0,",","."),
 									($tasa==0)?"":" i:".number_format($tasa,2,",",".")."%"
@@ -223,8 +241,6 @@ foreach($data_fallecidos as $pais=>$data){
 	<script src="https://code.jquery.com/jquery-3.4.1.slim.min.js" integrity="sha384-J6qa4849blE2+poT4WnyKhv5vZF5SrPo0iEjwBvKU7imGFAV0wwj1yYfoRSJoZ+n" crossorigin="anonymous"></script>
 	<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.min.js" integrity="sha384-wfSDF2E50Y2D1uUdj0O3uMBJnjuUD4Ih7YwaYd1iqfktj0Uod8GCExl3Og8ifwB6" crossorigin="anonymous"></script>
 	<script src="https://code.highcharts.com/highcharts.js"></script>
-	<script src="https://code.highcharts.com/modules/exporting.js"></script>
-	<script src="https://code.highcharts.com/modules/export-data.js"></script>
 	<script src="https://code.highcharts.com/modules/accessibility.js"></script>
 	<script>
 		var DATA=<?php echo json_encode($bigdata);?>;
@@ -319,7 +335,7 @@ foreach($data_fallecidos as $pais=>$data){
 			        zoomType: 'xy'
 			    },
 			    title: {
-			        text: 'Fallecimientos'
+			        text: ''
 			    },
 			    xAxis: {
 			        categories: categorias
@@ -337,7 +353,10 @@ foreach($data_fallecidos as $pais=>$data){
 			        	opposite: true
 			    	}
 			    ],
-			    "series": series
+			    "series": series,
+			    credits: {
+				    enabled: false
+				}
 			});
 		}
 		
