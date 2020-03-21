@@ -72,47 +72,75 @@ function ProcesarFichero($file_name,$fileContent=""){
 if(isset($_GET["ccaa"])){
 	include("get.spain.data.php");
 	$SpainData=GetSpainData();
+	$data_date_update=$SpainData["date_update"];
 	$data_fallecidos=ProcesarFichero("",$SpainData["fallecidos"]);
 	$data_contagiados=ProcesarFichero("",$SpainData["contagiados"]);
 }else{
+	$data_date_update=date("Y-m-d",strtotime("-1 days"))." 00:00:00";
 	$data_fallecidos=ProcesarFichero("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_19-covid-Deaths.csv");
 	$data_contagiados=ProcesarFichero("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_19-covid-Confirmed.csv");
 }
 
 $bigdata=array();
+$fecha_minima=null;
+$fecha_maxima=null;
+	
 foreach($data_fallecidos as $pais=>$data){
-	$total_contagios=$data["total"];
-	$total_contagios=isset($data_contagiados[$pais])?$data_contagiados[$pais]["total"]:0;
-	$total_fallecidos=isset($data_fallecidos[$pais])?$data_fallecidos[$pais]["total"]:0;
 	$bigdata[$pais]=array(
-		"contagiados"=>array("total"=>$total_contagios,"dias"=>array()),
-		"fallecidos"=>array("total"=>$total_fallecidos,"dias"=>array()),
-		"acum_contagiados"=>array("total"=>$total_contagios,"dias"=>array()),
-		"acum_fallecidos"=>array("total"=>$total_fallecidos,"dias"=>array()),
-		"tasa"=>array("total"=>($total_contagios==0)?0:round(100*$total_fallecidos/$total_contagios,2),"dias"=>array())
+		"t"=>array(
+			"c"=>0,/*contagiados*/
+			"f"=>0/*fallecidos*/
+		),
+		"d"=>array()
 	);
+	
 	$f=strtotime("2020-01-22");
 	$ff=strtotime(date("Y-m-d"));
 	$i=0;
 	$acum_contagiados=0;
 	$acum_fallecidos=0;
 	
+	
+	
 	while($f<$ff){
 		$k=date("Y-m-d",$f);
-		$k=date("Y-m-d",$f);
-		$contagiados=(isset($data_contagiados[$pais]) && isset($data_contagiados[$pais][$k]))?$data_contagiados[$pais][$k]:0;
-		$fallecidos=(isset($data_fallecidos[$pais]) && isset($data_fallecidos[$pais][$k]))?$data_fallecidos[$pais][$k]:0;
+		if((isset($data_contagiados[$pais][$k]))||(isset($data_fallecidos[$pais][$k]))){
+			if((is_null($fecha_minima))||($f<$fecha_minima)){
+				$fecha_minima=$f;
+			}
+			if((is_null($fecha_maxima))||($fecha_maxima<$f)){
+				$fecha_maxima=$f;
+			}
 		
-		$acum_contagiados+=$contagiados;
-		$acum_fallecidos+=$fallecidos;
-		
-		$bigdata[$pais]["contagiados"]["dias"][$k]= $contagiados;
-		$bigdata[$pais]["fallecidos"]["dias"][$k]=  $fallecidos;
-		
-		$bigdata[$pais]["acum_contagiados"]["dias"][$k]= $acum_contagiados;
-		$bigdata[$pais]["acum_fallecidos"]["dias"][$k]=  $acum_fallecidos;
-		
-		$bigdata[$pais]["tasa"]["dias"][$k]=  ($acum_contagiados==0)?0:round(100*$acum_fallecidos/$acum_contagiados,2);
+			$contagiados=(isset($data_contagiados[$pais]) && isset($data_contagiados[$pais][$k]))?$data_contagiados[$pais][$k]:0;
+			$fallecidos=(isset($data_fallecidos[$pais]) && isset($data_fallecidos[$pais][$k]))?$data_fallecidos[$pais][$k]:0;
+			
+			$last_acum_contagiados=$acum_contagiados;
+			$last_acum_fallecidos=$acum_fallecidos;
+			
+			$acum_contagiados+=$contagiados;
+			$acum_fallecidos+=$fallecidos;
+			
+			$crecimiento_contagiados=($last_acum_contagiados==0)? 0 : round((100*$acum_contagiados/$last_acum_contagiados)-100,2);
+			$crecimiento_fallecidos=($last_acum_fallecidos==0)? 0 : round((100*$acum_fallecidos/$last_acum_fallecidos)-100,2);
+			
+			if(($acum_contagiados>0)||($acum_fallecidos>0)){
+				$bigdata[$pais]["d"][$k]=array(
+					"c"=>$contagiados,
+					"f"=>$fallecidos,
+					"sc"=>$acum_contagiados,/*acumulados contagiados*/
+					"sf"=>$acum_fallecidos, /*acumulados fallecidos*/
+					"if"=>($acum_contagiados==0)?0:round(100*$acum_fallecidos/$acum_contagiados,2), /*tasa de fallecidos por contagiados*/
+					"cc"=>$crecimiento_contagiados,/*crecimiento contagiados*/
+					"cf"=>$crecimiento_fallecidos /*crecimiento fallecidos*/
+				);
+				$bigdata[$pais]["t"]["c"]+=$contagiados;
+				$bigdata[$pais]["t"]["f"]+=$fallecidos;
+				$bigdata[$pais]["t"]["if"]=($bigdata[$pais]["t"]["c"]==0)?0:round(100*$bigdata[$pais]["t"]["f"]/$bigdata[$pais]["t"]["c"],2);
+				$bigdata[$pais]["t"]["cc"]=$crecimiento_contagiados;
+				$bigdata[$pais]["t"]["cf"]=$crecimiento_fallecidos;
+			}
+		}
 		$f=strtotime('+1 day', $f);
 	}
 
@@ -156,6 +184,75 @@ foreach($data_fallecidos as $pais=>$data){
 			text-decoration: underline;
 			font-weight:bold;
 		}
+		table .d{
+			min-width:80px;
+			font-size:1em;
+		}
+		table .d span{
+			text-align:right;
+		}
+		table .d .r{
+			display:block;
+		}
+		table .d .r.r1{
+			font-size:1em;
+			height:1.2em;
+			line-height:1.3em;
+			font-weight:bold;
+		}
+		table .d .r.r2{
+			font-size:.7em;
+			height:1.4em;
+			line-height:1.3em;
+		}
+		table .d .r.r3{
+			font-size:.8em;
+			height:1.3em;
+			line-height:1.3em;
+		}
+		table .d .r.r4{
+			font-size:.7em;
+			height:1.2em;
+			line-height:1.3em;
+		}
+		table .d .r .c{
+			display:inline-block;
+			
+		}
+		table .d .c1{
+			width:40%;
+			color:#ff4d4d;
+			font-size:.8em;
+		}
+		table .d .c2{
+			width:60%;
+		}
+		table .d .c3{
+			width:40%;
+			color:#8c8c8c;
+		}
+		table .d .c4{
+			width:60%;
+			color:#8c8c8c;
+		}
+		table .d .c5{
+			width:40%;
+			
+		}
+		table .d .c6{
+			font-weight:bold;
+			font-size:1.2em;
+			width:60%;
+			color:#e68a00;
+		}
+		table .d .c7{
+			width:40%;
+			color:#ffad33;
+		}
+		table .d .c8{
+			width:60%;
+			color:#ffad33;
+		}
 	</style>
   </head>
   <body>
@@ -174,8 +271,8 @@ foreach($data_fallecidos as $pais=>$data){
 				<ul class="navbar-nav mr-auto">
 				</ul>
 				<ul class="navbar-nav">
-					<a class="btn btn-outline-secondary mr-1 <?php echo (isset($_GET["ccaa"]))?"":"active";?>" href="index.php">PAISES</span></a>
-				    <a class="btn btn-outline-secondary mr-1 <?php echo (isset($_GET["ccaa"]))?"active":"";?>" href="index.php?ccaa=1">ESPAÑA</span></a>
+					<a class="btn btn-outline-secondary mr-1 <?php echo (isset($_GET["ccaa"]))?"":"active";?>" href="?">PAISES</span></a>
+				    <a class="btn btn-outline-secondary mr-1 <?php echo (isset($_GET["ccaa"]))?"active":"";?>" href="?ccaa=1">ESPAÑA</span></a>
 				    <a class="btn btn-outline-warning" href="https://github.com/losajaches/covid19" target='_blank'>&copy;</span></a>
 			    </ul>
 			</div>
@@ -195,44 +292,107 @@ foreach($data_fallecidos as $pais=>$data){
 				<div id="container"></div>
 			</div>
 			<div class='col-sm-5 pl-0'>
+				<table class="table table-bordered table-sm table-striped table-hover">
+					<thead>
+						<th  class='text-center' colspan='2'>Leyenda (datos actualizados a fecha <?php echo date("d/m/Y H:i",strtotime($data_date_update));?>)</th>
+					</thead>
+					<tbody>
+						<tr>
+							<td class='d' style='width:100px;'>
+								<span class='r r1'><span class='c c1'>9,9%</span><span class='c c2'>9.999</span></span>
+								<span class='r r2'><span class='c c3'>9,9%</span><span class='c c4'>99.999</span></span>
+								<span class='r r3'><span class='c c5'></span><span class='c c6'>9.999</span></span>
+								<span class='r r4'><span class='c c7'>9,9%</span><span class='c c8'>99.999</span></span>
+							</td>
+							<td class='d'>
+								<span class='r r1'><span class='c c1'>Tasa de fallecidos</span><span class='c c2'>Nuevos fallecidos</span></span>
+								<span class='r r2'><span class='c c3'>% Nuevos fallecidos</span><span class='c c4'>Fallecidos totales</span></span>
+								<span class='r r3'><span class='c c5'></span><span class='c c6'>Nuevo contagiados</span></span>
+								<span class='r r4'><span class='c c7'>% Nuevos Contagiados</span><span class='c c8'>Contagiados totales</span></span>
+							</td>
+						</tr>
+					</tbody>
+				</table>
+				
 				<div class='table-responsive'>
 				<table class="table table-bordered table-sm table-striped table-hover">
 					<?php
-					$meses=array("","Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic");
 					$i=0;
-					foreach($bigdata as $pais=>$d){
-						if($d["fallecidos"]["total"]>0){
-							
+					foreach($bigdata as $pais=>$pais_data){
+						if($pais_data["t"]["f"]>0){
 							if($i==0){
 								$Nombre=(isset($_GET["ccaa"]))?"ESPAÑA":"País";
 								echo "<thead>";
 								echo "<th class='text-center'><input type='checkbox' checked></th>";
 								echo "<th>$Nombre</th>";
-								echo "<th>Total<br>Fallecidos</th>";
-								foreach(array_reverse($d["fallecidos"]["dias"],true) as $k=>$v){
-									$s=explode("-",$k);
-									$s=sprintf("%02d<br><small>%s</small>",$s[2],$meses[1*$s[1]]);
-									echo "<td class='text-center'>$s</td>";
+								echo "<th class='text-center'>Total</th>";
+								
+								$f=$fecha_maxima;
+								while($f>=$fecha_minima){
+									$s=sprintf("%s<small>/%s</small>",date("d",$f),date("m",$f));
+									echo "<th class='text-center'>$s</th>";
+									
+									$f=strtotime('-1 day', $f);	
 								}
 								echo "</thead>";
 								echo "<tbody>";
 							}
 							
-							
 							echo "<tr>";
 							echo sprintf("<td class='text-center'><input type='checkbox' %s data-pais='$pais'></td>",($i<5)?"checked":"");
 							echo sprintf("<td >%s</td>",substr(str_replace(" ","·",$pais),0,15));
-							echo sprintf("<td class='text-right font-weight-bold'>%s</td>",$d["fallecidos"]["total"]);
-							foreach(array_reverse($d["fallecidos"]["dias"],true) as $k=>$v){
-								$contagiados=isset($d["contagiados"]["dias"][$k])?$d["contagiados"]["dias"][$k]:0;
-								$tasa=isset($d["tasa"]["dias"][$k])?$d["tasa"]["dias"][$k]:0;
-								echo sprintf("<td class='text-right'>%s<br><small title='Nuevos casos y tasa de fallecidos por contagiados'>%s%s</small></td>",
-									($v==0)?"":number_format($v,0,",","."),
-									($contagiados==0)?"":"+".number_format($contagiados,0,",","."),
-									($tasa==0)?"":" i:".number_format($tasa,2,",",".")."%"
-								);
+							
+							$fallecidos=($pais_data["t"]["f"]==0) ? "*" : number_format($pais_data["t"]["f"],0,",",".");
+							$contagiados=($pais_data["t"]["c"]==0) ? "*" : number_format($pais_data["t"]["c"],0,",",".");
+							
+							$crecimiento_fallecidos= ($pais_data["t"]["cf"]==0) ? "" : number_format($pais_data["t"]["cf"],1,",",".")."%";
+							$crecimiento_contagiados=($pais_data["t"]["cc"]==0) ? "" : number_format($pais_data["t"]["cc"],1,",",".")."%";
+							$indice_fallecidos=      ($pais_data["t"]["if"]==0) ? "" : number_format($pais_data["t"]["if"],1,",",".")."%";
+							
+							echo "<td class='d'>
+									<span class='r r1'><span class='c c1'>$indice_fallecidos</span><span class='c c2'>$fallecidos</span></span>
+									<span class='r r2'><span class='c c3>$crecimiento_fallecidos</span><span class='c c4'></span></span>
+									<span class='r r3'><span class='c c5'></span><span class='c c6'>$contagiados</span></span>
+									<span class='r r4'><span class='c c7'>$crecimiento_contagiados</span><span class='c c8'></span></span>
+								</td>";
+								
+								
+							$f=$fecha_maxima;
+							while($f>=$fecha_minima){
+								$k=date("Y-m-d",$f);
+								if($pais_data["d"][$k]){
+									$pd=$pais_data["d"][$k];
+									
+									$fallecidos             = ($pd["f"]==0) ? "" : number_format($pd["f"],0,",",".");
+									$contagiados            = ($pd["c"]==0) ? "" : number_format($pd["c"],0,",",".");
+									$acum_fallecidos        = ($pd["sf"]==0) ? "" : number_format($pd["sf"],0,",",".");
+									$acum_contagiados       = ($pd["sc"]==0) ? "" : number_format($pd["sc"],0,",",".");
+									
+									$crecimiento_fallecidos = ($pd["cf"]==0) ? "" : number_format($pd["cf"],1,",",".")."%";
+									$crecimiento_contagiados= ($pd["cc"]==0) ? "" : number_format($pd["cc"],1,",",".")."%";
+									$indice_fallecidos      = ($pd["if"]==0) ? "" : number_format($pd["if"],1,",",".")."%";
+								}else{
+									$fallecidos="";	
+									$contagiados="";	
+									$acum_fallecidos="";	
+									$acum_contagiados="";	
+									$crecimiento_fallecidos="";	
+									$crecimiento_contagiados="";	
+									$indice_fallecidos="";	
+								}
+								$fallecidos=isset($pais_data["d"][$k]) ? $pais_data["d"][$k]["f"] : 0;
+								$fallecidos=($fallecidos==0) ? "" : number_format($fallecidos,0,",",".");
+								
+								echo "<td class='d'>
+									<span class='r r1'><span class='c c1'>$indice_fallecidos</span><span class='c c2'>$fallecidos</span></span>
+									<span class='r r2'><span class='c c3'>$crecimiento_fallecidos</span><span class='c c4'>$acum_fallecidos</span></span>
+									<span class='r r3'><span class='c c5'></span><span class='c c6'>$contagiados</span></span>
+									<span class='r r4'><span class='c c7'>$crecimiento_contagiados</span><span class='c c8'>$acum_contagiados</span></span>
+								</td>";
+								
+								$f=strtotime('-1 day', $f);	
 							}
-							echo "</tr>";	
+							echo "</tr>";
 							$i++;
 						}
 					}
@@ -250,53 +410,65 @@ foreach($data_fallecidos as $pais=>$data){
 	<script>
 		var DATA=<?php echo json_encode($bigdata);?>;
 		
-			
+		function GetValuesArrayObject(a){
+			var b=[];
+			$.each(a,function(i,v){
+				b.push(v);
+			});
+			return b;
+			return Math.min.apply(Math, b);
+		}	
 		function MostrarGrafica(){
 			var series=[];
 			var categorias=[];
 			var index_color=0;
 			var ShowAcumulado=$("#ShowAcumulado").prop("checked");
 			var ShowDiario=$("#ShowDiario").prop("checked");
-			//buscamos el primer día con datos de cualquiera de los paises seleccionados
+			//buscamos el primer y ultimo día con datos de cualquiera de los paises seleccionados y se crean las categorías
 			var primer_dia={};
+			var ultimo_dia={};
 			$("table tbody input:checked").each(function(){
 				var pais=$(this).data("pais");
 				primer_dia[pais]=null;
-				$.each(DATA[pais]["fallecidos"]["dias"],function(i,v){
-					if((v!=0)&&(primer_dia[pais]==null)){
+				ultimo_dia[pais]=null;
+				$.each(DATA[pais]["d"],function(i,v){
+					if((v["f"]!=0)&&(primer_dia[pais]==null)){
 						primer_dia[pais]=1*i.replace(/\-/g,'');
 					}
+					ultimo_dia[pais]=1*i.replace(/\-/g,'');
 				});
 			});
-			var p="99999999";
-			$.each(primer_dia,function(i,v){
-				if(v<p){
-					p=v;
-				}
-			});
-			primer_dia=p;
+			
+			primer_dia=Math.min.apply(Math, GetValuesArrayObject(primer_dia)).toString();
+			ultimo_dia=Math.min.apply(Math, GetValuesArrayObject(ultimo_dia)).toString();
+			
+			primer_dia=primer_dia.substring(0,4)+"-"+primer_dia.substring(4,6)+"-"+primer_dia.substring(6,10);
+			ultimo_dia=ultimo_dia.substring(0,4)+"-"+ultimo_dia.substring(4,6)+"-"+ultimo_dia.substring(6,10);
+			
+			primer_dia = new Date(primer_dia);
+			ultimo_dia = new Date(ultimo_dia);
+			
+			var categorias=[];
+			var loop = new Date(primer_dia);
+			while(loop <= ultimo_dia){
+			   categorias.push(loop.toISOString().split('T')[0]);
+			   loop = new Date(loop.setDate(loop.getDate() + 1));
+			}
+			
 			//creamos las series
 			$("table tbody input:checked").each(function(){
 				var pais=$(this).data("pais");
-				var t=$.map(DATA[pais]["fallecidos"]["dias"], function(n, i) { return i; }).length;
-				
 				var d=[];
 				var dT=[];
-				categorias=[];
-				vt=0;
-				$.each(DATA[pais]["fallecidos"]["dias"],function(i,v){
-					
-					var ii=1*i.replace(/\-/g,'');
-					if(ii>=primer_dia){
-						d.push(v);
-						vt+=v;
-						dT.push(vt);
-						var fecha=i.split("-")
-						categorias.push(fecha[2]+"/"+fecha[1]+"/"+fecha[0]);
+				$.each(categorias,function(i,fecha){
+					if(DATA[pais]["d"][fecha]){
+						d.push(DATA[pais]["d"][fecha]["f"]);	
+						dT.push(DATA[pais]["d"][fecha]["sf"]);	
+					}else{
+						d.push(null);
+						dT.push(null);
 					}
-					
 				});
-				
 				var s_acumulado={
 					"name": pais,
 					type: 'area',
@@ -333,7 +505,6 @@ foreach($data_fallecidos as $pais=>$data){
 				
 				index_color++;
 			});
-			
 			Highcharts.chart('container', {
 			    chart: {
 			        
