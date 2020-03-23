@@ -182,10 +182,10 @@
 	</header>
 	<div id='MainForm' class='container-fluid pt-2' style='min-height:400px;'>
 		<div class='row'>
-			<div class='col-sm-7 pr-0'>
+			<div class='col-sm-7 pl-1 pr-0'>
 				<div id="graph"></div>
 			</div>
-			<div class='col-sm-5 pl-0'>
+			<div class='col-sm-5 pl-0 pr-1'>
 				<table id="infoTable" class="table table-bordered table-sm table-striped table-hover">
 					<thead>
 						<th class='text-center' colspan='2'></th>
@@ -465,19 +465,21 @@
 					}
 				});
 				var s_fall_acum={
+					"id":pais+"_s_fall_acum_"+index_color,
 					"name": pais+" (F)",
 					type: 'area',
 					yAxis:1,
 					"data":d_fall_acum,
 					lineWidth: 0,
 					color: Highcharts.getOptions().colors[index_color],
-			        fillOpacity: 0.3,
+			        fillOpacity: 0.5,
 			        zIndex: 0,
 			        marker: {
 			            enabled: false
 			        }
 				};
 				var s_fall_diar={
+					"id":pais+"_s_fall_diar_"+index_color,
 					"name": pais+" (F)",
 					type: 'spline',
 					yAxis:0,
@@ -490,19 +492,21 @@
 				};
 				index_color++;
 				var s_cont_acum={
+					"id":pais+"_s_cont_acum_"+index_color,
 					"name": pais+" (C)",
 					type: 'area',
 					yAxis:1,
 					"data":d_cont_acum,
 					lineWidth: 0,
 					color: Highcharts.getOptions().colors[index_color],
-			        fillOpacity: 0.3,
+			        fillOpacity: 0.5,
 			        zIndex: 0,
 			        marker: {
 			            enabled: false
 			        }
 				};
 				var s_cont_diar={
+					"id":pais+"_s_cont_diar_"+index_color,
 					"name": pais+" (C)",
 					type: 'spline',
 					yAxis:0,
@@ -517,16 +521,17 @@
 				
 				if(fall_acum){
 					series.push(s_fall_acum);
-					s_fall_diar["linkedTo"]=':previous';
+					s_fall_diar["linkedTo"]=s_fall_acum.id;
 				}
+				if(cont_acum){
+					series.push(s_cont_acum);
+					s_cont_diar["linkedTo"]=s_cont_acum.id;
+				}
+				
 				if(fall_diar){
 					series.push(s_fall_diar);		
 				}
 				
-				if(cont_acum){
-					series.push(s_cont_acum);
-					s_cont_diar["linkedTo"]=':previous';
-				}
 				if(cont_diar){
 					series.push(s_cont_diar);		
 				}
@@ -534,10 +539,13 @@
 				
 				index_color++;
 			});
-			
 			Highcharts.chart('graph', {
 			    chart: {
-			        zoomType: 'xy'
+			        zoomType: 'xy',
+			        spacingTop: 6,
+			        spacingRight: 0,
+			        spacingBottom: 0,
+			        spacingLeft: 0
 			    },
 			    title: {
 			        text: ''
