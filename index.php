@@ -15,10 +15,20 @@
 	<link href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
 	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.12.1/css/all.min.css" integrity="sha256-mmgLkCYLUQbXn0B1SRqzHar6dCnv9oZFPEC1g1cwlkk=" crossorigin="anonymous" />
 	<style>
-		body {
-			padding-top:34px;
+		:root {
+			--ww:30px;
+			--hh:30px;
+		}
+		@media (max-width:900px) {
+			:root {
+				--ww:42px;
+				--hh:42px;
+			}
 		}
 		
+		body {
+			padding-top:calc(var(--hh) + 6px);
+		}
 		
 		#MainNav{
 			padding:6px !important;
@@ -28,24 +38,28 @@
 		#MainNav .navbar-brand{
 			padding-top:0 !important;
 			padding-bottom:0 !important;
-			height:30px !important;
+			height:var(--hh) !important;
 		}
-		
+		#MainNav img{
+			height:var(--hh);
+			width:var(--ww);
+		}
 		#MainNav .titulo{
 			font-weight:bold;
 			display:inline-block;
-			height:30px;
+			height:var(--hh);
 		}
 		#MainNav .titulo .t1{
 			color:#ffcc80;	
-			font-size:20px;
-			line-height:22px;
+			font-size:calc(var(--hh)*2/3);
+			line-height:calc(var(--hh)*2/3);
 			display:block;
 		}
+		
 		#MainNav .titulo .t2{
 			color:#ffebcc;	
-			font-size:8px;
-			line-height:8px;
+			font-size:calc(var(--hh)/3);
+			line-height:calc(var(--hh)/3);
 			display:block;
 			text-align:right;
 		}
@@ -57,6 +71,15 @@
 			background-color:#ffebcc;
 			color:#e68a00;
 		}
+		#MainNav button,#MainNav a{
+			height:var(--hh);
+			width:var(--ww);
+			font-size:calc(var(--hh)*2/3);
+			line-height:var(--hh);
+			text-align:center;
+			padding:0;
+		}
+		
 		
 		table{
 			font-size:.7em;
@@ -144,7 +167,7 @@
     <header>
     	<nav id='MainNav' class="navbar navbar-dark bg-dark fixed-top">
 		  <a class="navbar-brand" href="#" class='p-0 m-0'>
-		    <img src="icon.png" class="d-inline-block align-top" style='width:30px;height:30px;'>
+		    <img src="icon.png" class="d-inline-block align-top">
 		    <div class='titulo'>
 		    	<span class='t1'>COVID-19</span>
 		    	<span class='t2'>ESTADISTICAS</span>
@@ -157,7 +180,7 @@
 		  </div>
 		</nav>
 	</header>
-	<div id='MainForm' class='container-fluid pt-2' style='min-height:500px;'>
+	<div id='MainForm' class='container-fluid pt-2' style='min-height:400px;'>
 		<div class='row'>
 			<div class='col-sm-7 pr-0'>
 				<div id="graph"></div>
@@ -182,10 +205,18 @@
 								<span class='r r4'><span class='c c7'>Incremento Contagiados</span><span class='c c8'>Contagiados totales</span></span>
 							</td>
 						</tr>
-						<tr>
-							<td colspan='2' class='text-center'>
-								<label><input type='checkbox' id='ShowDiario' checked>Mostrar fallecimientos diarios</label>&nbsp;&nbsp;
-								<label><input type='checkbox' id='ShowAcumulado' checked>Mostrar fallecimientos acumulados diarios</label>	
+						<tr class='cb_graph'>
+							<td><b>F</b>allecidos :</td>
+							<td>
+								<label class='mr-2'><input type='checkbox' data-tipograph='fall_diar' checked>Diarios</label>
+								<label><input type='checkbox' data-tipograph='fall_acum' checked>Acumulados</label>
+							</td>
+						</tr>
+						<tr class='cb_graph'>
+							<td><b>C</b>ontagiados :</td>
+							<td>
+								<label class='mr-2'><input type='checkbox' data-tipograph='cont_diar' checked>Diarios</label>
+								<label><input type='checkbox' data-tipograph='cont_acum' checked>Acumulados</label>
 							</td>
 						</tr>
 					</tbody>
@@ -207,31 +238,36 @@
 			$("#MainNav button").removeClass("active");
 			
 			var tipo=$(ui).data("tipo");
+			var old_icon=$(ui).html();
+			$(ui).html("<i class='fas fa-spinner fa-spin'></i>");
+			
 			$(ui).addClass("active");
+			
 			$("#dataTable").html("");
 			$("#graph").html("");
+			
 			$("#infoTable thead th:eq(0)").html("<i class='fas fa-spinner fa-spin'></i> Cargando datos");
+			
+			
 			$.getJSON("data."+tipo+".json", function(data_json) {
-				var fecha=new Date(data_json.date_update);
+				var fecha=new Date(data_json.date_update.replace(' ', 'T'));
 				var html="";
-				html+="Fecha de actualización: "+fecha.toLocaleDateString("es-ES")+" "+fecha.toLocaleTimeString("es-ES")+"<br>";
-				html+="<small>";
-				html+=data_json.descripcion+"<br>| ";
+				html+=data_json.descripcion+"<br><b>"+fecha.toLocaleDateString()+" "+fecha.toLocaleTimeString()+"</b><br>";
 				$.each(data_json.sources,function(i,source){
 					html+="<a href='"+source.url+"' target='_blank'>"+source.name+"</a> | ";	
 				});
-				html+="</small>";
+				
 				$("#infoTable thead th:eq(0)").html(html);
 				DATA=data_json.data;
 				ShowTable(tipo);
 				ShowGraph();
-			
+				$(ui).html(old_icon);
 			}).fail(function(e) {
 			    $("#infoTable thead th:eq(0)").html("<span class='text-danger'>Se ha producido un error al cargar los datos</span>");
 			}).always(function() {
 			    
 			});
-  
+ 
 		}
 		
 		function GetValuesArrayObject(a){
@@ -317,7 +353,7 @@
 					
 					var html="";
 					html+="<tr>";
-					html+="	<td class='text-center'><input type='checkbox' "+((n<5)?"checked":"")+" data-pais='"+k+"' onclick='ShowGraph();'></td>";
+					html+="	<td class='text-center'><input type='checkbox' "+((n<2)?"checked":"")+" data-pais='"+k+"' onclick='ShowGraph();'></td>";
 					html+="	<td>"+k.replace(/ /g,"·")+"</td>";
 					html+="	<td class='d'>";
 					html+="		<span class='r r1'><span class='c c1'>"+indice_fallecidos+"</span><span class='c c2'>"+fallecidos+"</span></span>";
@@ -368,8 +404,12 @@
 			var series=[];
 			var categorias=[];
 			var index_color=0;
-			var ShowAcumulado=$("#ShowAcumulado").prop("checked");
-			var ShowDiario=$("#ShowDiario").prop("checked");
+			
+			var fall_diar=$(".cb_graph input[data-tipograph='fall_diar']").prop("checked");
+			var fall_acum=$(".cb_graph input[data-tipograph='fall_acum']").prop("checked");
+			var cont_diar=$(".cb_graph input[data-tipograph='cont_diar']").prop("checked");
+			var cont_acum=$(".cb_graph input[data-tipograph='cont_acum']").prop("checked");
+			
 			//buscamos el primer y ultimo día con datos de cualquiera de los paises seleccionados y se crean las categorías
 			var primer_dia={};
 			var ultimo_dia={};
@@ -395,32 +435,40 @@
 			ultimo_dia = new Date(ultimo_dia);
 			
 			var categorias=[];
+			var categorias_lbl=[];
 			var loop = new Date(primer_dia);
 			while(loop <= ultimo_dia){
 			   categorias.push(loop.toISOString().split('T')[0]);
+			   categorias_lbl.push(loop.toLocaleDateString());
 			   loop = new Date(loop.setDate(loop.getDate() + 1));
 			}
 			
 			//creamos las series
 			$("#dataTable tbody input:checked").each(function(){
 				var pais=$(this).data("pais");
-				var d=[];
-				var dT=[];
+				var d_fall_diar=[];
+				var d_fall_acum=[];
+				var d_cont_diar=[];
+				var d_cont_acum=[];
+			
 				$.each(categorias,function(i,fecha){
 					if(DATA[pais]["d"][fecha]){
-						d.push(DATA[pais]["d"][fecha]["f"]);	
-						dT.push(DATA[pais]["d"][fecha]["sf"]);	
+						d_fall_diar.push(DATA[pais]["d"][fecha]["f"]);	
+						d_fall_acum.push(DATA[pais]["d"][fecha]["sf"]);	
+						d_cont_diar.push(DATA[pais]["d"][fecha]["c"]);	
+						d_cont_acum.push(DATA[pais]["d"][fecha]["sc"]);	
 					}else{
-						d.push(null);
-						dT.push(null);
+						d_fall_diar.push(null);
+						d_fall_acum.push(null);
+						d_cont_diar.push(null);
+						d_cont_acum.push(null);
 					}
 				});
-				var s_acumulado={
-					"name": pais,
+				var s_fall_acum={
+					"name": pais+" (F)",
 					type: 'area',
 					yAxis:1,
-					"data":dT,
-					
+					"data":d_fall_acum,
 					lineWidth: 0,
 					color: Highcharts.getOptions().colors[index_color],
 			        fillOpacity: 0.3,
@@ -429,11 +477,36 @@
 			            enabled: false
 			        }
 				};
-				var s_diario={
-					"name": pais,
+				var s_fall_diar={
+					"name": pais+" (F)",
 					type: 'spline',
 					yAxis:0,
-					"data":d,
+					"data":d_fall_diar,
+					zIndex: 1,
+					color: Highcharts.getOptions().colors[index_color],
+					marker: {
+			            enabled: false
+			        }
+				};
+				index_color++;
+				var s_cont_acum={
+					"name": pais+" (C)",
+					type: 'area',
+					yAxis:1,
+					"data":d_cont_acum,
+					lineWidth: 0,
+					color: Highcharts.getOptions().colors[index_color],
+			        fillOpacity: 0.3,
+			        zIndex: 0,
+			        marker: {
+			            enabled: false
+			        }
+				};
+				var s_cont_diar={
+					"name": pais+" (C)",
+					type: 'spline',
+					yAxis:0,
+					"data":d_cont_diar,
 					zIndex: 1,
 					color: Highcharts.getOptions().colors[index_color],
 					marker: {
@@ -441,36 +514,46 @@
 			        }
 				};
 				
-				if(ShowAcumulado){
-					series.push(s_acumulado);
-					s_diario["linkedTo"]=':previous';
+				
+				if(fall_acum){
+					series.push(s_fall_acum);
+					s_fall_diar["linkedTo"]=':previous';
 				}
-				if(ShowDiario){
-					series.push(s_diario);	
+				if(fall_diar){
+					series.push(s_fall_diar);		
 				}
+				
+				if(cont_acum){
+					series.push(s_cont_acum);
+					s_cont_diar["linkedTo"]=':previous';
+				}
+				if(cont_diar){
+					series.push(s_cont_diar);		
+				}
+				
 				
 				index_color++;
 			});
+			
 			Highcharts.chart('graph', {
 			    chart: {
-			        
 			        zoomType: 'xy'
 			    },
 			    title: {
 			        text: ''
 			    },
 			    xAxis: {
-			        categories: categorias
+			        categories: categorias_lbl
 			    },
 			    yAxis:[
 			    	{
 			        	title: {
-			            	text: 'Fallecidos diarios'
+			            	text: 'Diarios'
 			        	}
 			    	},
 			    	{
 			        	title: {
-			            	text: 'Fallecidos totales'
+			            	text: 'Acumulados'
 			        	},
 			        	opposite: true
 			    	}
@@ -490,10 +573,7 @@
 		}
 		
 		$( document ).ready(function() {
-    		$("#ShowDiario").click(function(){
-    			ShowGraph();
-    		});
-    		$("#ShowAcumulado").click(function(){
+    		$(".cb_graph input[type='checkbox']").click(function(){
     			ShowGraph();
     		});
     		
