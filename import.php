@@ -149,7 +149,7 @@ function ProcesarFicheroSpain($mySQL,$file_name,$fileContent=""){
 				$matrix[$r["CCAA Codigo ISO"]]["$y-$m-$d"]=array(
 					"acum_contagiados"=>(trim($r["Casos"])!="")?CheckData($r["Casos"]):0,
 					"acum_fallecidos"=>(trim($r["Fallecidos"])!="")?CheckData($r["Fallecidos"]):0,
-					"acum_curados"=>0,
+					"acum_curados"=>(trim($r["Recuperados"])!="")?CheckData($r["Recuperados"]):0,
 					"acum_hospitalizados"=>(trim($r["Hospitalizados"])!="")?CheckData($r["Hospitalizados"]):0,
 					"acum_uci"=>(trim($r["UCI"])!="")?CheckData($r["UCI"]):0	
 				);
