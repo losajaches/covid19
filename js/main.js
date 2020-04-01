@@ -34,7 +34,7 @@ function LoadData(event,pagina,subzona){
 				console.log(MAINDATA);
 				ShowDataTable(r,i);
 				if(pagina==1){
-					ShowGraph();
+					ShowGraph(null,true);
 				}
 			}else{
 				ShowError(r.msg);
@@ -97,7 +97,7 @@ function ShowDataTable(datos,i_inicial){
 	$.each(datos.data,function(i,v){
 		
 		$("#dataTableTotal tbody").append("<tr>%s%s%s%s</tr>",
-			sprintf("<td class='text-left font-weight-bold'><input type='checkbox' %s data-id='%s' onclick='ShowGraph();'>%s%s</td>",
+			sprintf("<td class='text-left font-weight-bold'><input type='checkbox' %s data-id='%s' onclick='ShowGraph(null,true);'>%s%s</td>",
 				((datos.pagina==1)&&(i<2))?"checked":"",
 				i_inicial+i,
 				(v.z>1)?sprintf("<a href='#' onclick='LoadData(event,1,\"%s\");'>%s</a>",v.p,v.p): v.p,
@@ -156,30 +156,33 @@ function NormalizarVectores(data_x,data_y){
 	}
 }
 
-function ShowGraph(gid){
-	if(isset(gid)){
+function ShowGraph(gid,reset){
+	if(!is_null(gid)){
 		var grafica=gid;
 	}else{
 		var grafica=$(".graph",$("#graphCarousel .carousel-item.active")).attr("id");
 	}
-	
-	$("#"+grafica).html("");
-	if(grafica=="graph_1"){
-		LoadGraphFallecidosAcumulados();	
-	}else if(grafica=="graph_2"){
-		LoadGraphFallecidosVsCurados("graph_2","Datos acumulados",true);	
-	}else if(grafica=="graph_3"){
-		LoadGraphFallecidosVsCurados("graph_3","Datos diarios",false);	
-	}else if(grafica=="graph_4"){
-		LoadGraphEstimadosFrenteAcumulado("graph_4","f","Fallecidos en la última semana frente a fallecidos totales");	
-	}else if(grafica=="graph_5"){
-		LoadGraphEstimadosFrenteAcumulado("graph_5","c","Contagios en la última semana frente a contagios totales");	
-	}else if(grafica=="graph_6"){
-		LoadGraphDatosSemanales("graph_6","f","Fallecidos semanales");	
+	if((reset)||($("#"+grafica).html()=="")){
+		
+		if(reset){
+			$(".graph",$("#graphCarousel")).html("");
+		}
+		
+		if(grafica=="graph_1"){
+			LoadGraphFallecidosAcumulados();	
+		}else if(grafica=="graph_2"){
+			LoadGraphFallecidosVsCurados("graph_2","Datos acumulados",true);	
+		}else if(grafica=="graph_3"){
+			LoadGraphFallecidosVsCurados("graph_3","Datos diarios",false);	
+		}else if(grafica=="graph_4"){
+			LoadGraphEstimadosFrenteAcumulado("graph_4","f","Fallecidos en la última semana frente a fallecidos totales");	
+		}else if(grafica=="graph_5"){
+			LoadGraphEstimadosFrenteAcumulado("graph_5","c","Contagios en la última semana frente a contagios totales");	
+		}else if(grafica=="graph_6"){
+			LoadGraphDatosSemanales("graph_6","f","Fallecidos semanales");	
+		}
 	}
 }
-
-
 
 function LoadGraphFallecidosAcumulados(){
 	var data_x=[];
