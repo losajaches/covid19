@@ -168,23 +168,35 @@ function ShowGraph(gid,reset){
 			$(".graph",$("#graphCarousel")).html("");
 		}
 		
-		if(grafica=="graph_1"){
-			LoadGraphFallecidosAcumulados();	
-		}else if(grafica=="graph_2"){
-			LoadGraphFallecidosVsCurados("graph_2","Datos acumulados",true);	
-		}else if(grafica=="graph_3"){
-			LoadGraphFallecidosVsCurados("graph_3","Datos diarios",false);	
-		}else if(grafica=="graph_4"){
-			LoadGraphEstimadosFrenteAcumulado("graph_4","f","Fallecidos en la última semana frente a fallecidos totales");	
-		}else if(grafica=="graph_5"){
-			LoadGraphEstimadosFrenteAcumulado("graph_5","c","Contagios en la última semana frente a contagios totales");	
-		}else if(grafica=="graph_6"){
-			LoadGraphDatosSemanales("graph_6","f","Fallecidos semanales");	
+		switch (grafica) {
+			case "graph_0":
+				$(".graph",$("#graphCarousel .carousel-item.active")).append("<div id='graph_0A' class='d-inline-block w-50 h-100'></div>");
+				$(".graph",$("#graphCarousel .carousel-item.active")).append("<div id='graph_0B' class='d-inline-block w-50 h-100'></div>");
+				LoadGraphPorcentajeUltimaSemanaFrenteAcumulado(["graph_0A","graph_0B"],7,["c","f"],["Contagiados","Fallecidos"],["Últ.Semana vs Total","Últ.Semana vs Total"]);	
+				break;
+			case "graph_1":
+				LoadGraphFallecidosAcumulados(grafica);	
+				break;
+			case "graph_2":
+				LoadGraphFallecidosVsCurados(grafica,"Datos acumulados",true);	
+				break;	
+		    case "graph_3":
+				LoadGraphFallecidosVsCurados(grafica,"Datos diarios",false);	
+				break;	
+			case "graph_4":
+				LoadGraphUltimaSemanaFrenteAcumulado(grafica,"f","Fallecidos en la última semana frente a fallecidos totales");	
+				break;	
+			case "graph_5":
+				LoadGraphUltimaSemanaFrenteAcumulado(grafica,"c","Contagios en la última semana frente a contagios totales");	
+				break;	
+			case "graph_6":
+				LoadGraphDatosSemanales(grafica,"f","Fallecidos semanales");	
+				break;
 		}
 	}
 }
 
-function LoadGraphFallecidosAcumulados(){
+function LoadGraphFallecidosAcumulados(id_graph){
 	var data_x=[];
 	$.each(MAINDATA.fechas_display,function(i,v){
 		data_x.push(v);	
@@ -210,7 +222,7 @@ function LoadGraphFallecidosAcumulados(){
 	
 	NormalizarVectores(data_x,series_fallecidos);
 	
-	Highcharts.chart("graph_1", {
+	Highcharts.chart(id_graph, {
 		chart: {
 	        type: "spline",
 	        backgroundColor: 'transparent',
@@ -242,7 +254,10 @@ function LoadGraphFallecidosAcumulados(){
 				lineWidth:0*/
             }
         },
-	    series:series_fallecidos
+	    series:series_fallecidos,
+	    credits: {
+	        enabled: false
+	    }
 	});
 	
 }
@@ -334,13 +349,16 @@ function LoadGraphFallecidosVsCurados(id_div,subtitulo,acumulados){
                 }
             }
         },
-	    series:series_fallecidos
+	    series:series_fallecidos,
+	    credits: {
+	        enabled: false
+	    }
 	});
 	
 }
 
 
-function LoadGraphEstimadosFrenteAcumulado(id_div,variable,titulo){
+function LoadGraphUltimaSemanaFrenteAcumulado(id_div,variable,titulo){
 	var series_data=[];
 	//paises seleccionados
 	index_color=0;
@@ -404,9 +422,101 @@ function LoadGraphEstimadosFrenteAcumulado(id_div,variable,titulo){
                 }
             }
         },
-	    series:series_data
+	    series:series_data,
+	    credits: {
+	        enabled: false
+	    }
 	});
 	
+}
+
+function LoadGraphPorcentajeUltimaSemanaFrenteAcumulado(id_divs,DiasAcumulados,variables,titulos,subtitulos){
+	
+	var series_data={};
+	$.each(id_divs,function(i,id_div){
+		series_data[id_div]=[];
+	});
+	
+	//paises seleccionados
+	index_color=-1;
+	$("#dataTableTotal tbody input:checked").each(function(i,ui){
+		var index=$(ui).data("id");
+		index_color++;
+		
+		$.each(id_divs,function(n_div,id_div){
+			var variable=variables[n_div];
+			
+			var serie={
+				name:MAINDATA.data[index].p,
+				color: Highcharts.getOptions().colors[index_color],
+				data:[]
+			};
+			
+			for(var i=0;i<MAINDATA.data[index].g[variable].length;i++){
+				if(i>=DiasAcumulados){
+					var acumulado=MAINDATA.data[index].g["a"+variable][i];
+					var ult_sem=0;
+					for(var j=0;j<DiasAcumulados;j++){
+						ult_sem+=MAINDATA.data[index].g[variable][i-j];	
+					}
+					serie.data.push({
+						x:acumulado,
+						y:ult_sem
+					});	
+				}	
+				
+			}
+			serie.data[serie.data.length-1]["dataLabels"]={
+	                enabled: true,
+	                formatter:function(){
+	                	return this.series.name;
+	                }
+	            };
+			series_data[id_div].push(serie);	
+		});
+	});
+
+	$.each(id_divs,function(j,id_div){
+		Highcharts.chart(id_div, {
+			chart: {
+		        type: "spline",
+		        backgroundColor: 'transparent',
+		        zoomType: 'xy',
+		        spacingTop: 6,
+				spacingRight: 0,
+				spacingBottom: 2,
+				spacingLeft: 0,
+				animation: false
+		    },
+		    title: {text: titulos[j]},
+		    subtitle: {text:subtitulos[j]},
+		    xAxis: {
+		        title:{
+		        	enabled:false
+		        },
+		        margin:0,
+		        visible:false
+		    },
+		    yAxis: {
+		    	title:{
+		        	enabled:false
+		        },
+		        margin:0,
+		        visible:false
+		    },
+		    plotOptions: {
+	            series: {
+	                marker: {
+	                    enabled:false
+	                }
+	            }
+	        },
+		    series:series_data[id_div],
+		    credits: {
+		        enabled: false
+		    }
+		});
+	});
 }
 
 function LoadGraphDatosSemanales(id_div,variable,titulo){
@@ -474,7 +584,11 @@ function LoadGraphDatosSemanales(id_div,variable,titulo){
                 }
             }
         },
-	    series:series_data
+	    series:series_data,
+	    credits: {
+	        enabled: false
+	    }
+
 	});
 	
 }
