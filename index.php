@@ -47,9 +47,13 @@
 		      <li data-target="#graphCarousel" data-slide-to="3"></li>
 		      <li data-target="#graphCarousel" data-slide-to="4"></li>
 		      <li data-target="#graphCarousel" data-slide-to="5"></li>
+		      <li data-target="#graphCarousel" data-slide-to="6"></li>
 		    </ol>
 		    <div class="carousel-inner">
 		      <div class="carousel-item active" >
+		      	<div id='graph_0' class='graph border'></div>
+		      </div>
+		      <div class="carousel-item">
 		        <div id='graph_1' class='graph'></div>
 		      </div>
 		      <div class="carousel-item">
@@ -167,7 +171,8 @@
 		<div class="container">
 			<footer class="row mr-4">
 				<div class="col-md-8 text-center text-md-left">
-					<b>Jose Manuel Rodríguez Sánchez, 2020</b> <small class="text-muted">Durante en confinamiento.</small>
+					<a href="https://www.ppsoft.org" target='_blank'>ppsoft.org</a> // <b>Jose Manuel Rodríguez Sánchez, 2020</b> <small class="text-muted">/ Durante en confinamiento.</small><br>
+					
 		    	</div>
 		    	<div class="col-md-4 text-center text-md-right">
 		    		<a href="#">Volver arriba</a></p>
@@ -185,10 +190,10 @@
 	<script>
 		$( document ).ready(function() {
 			$('#graphCarousel').on('slide.bs.carousel', function (event) {
-				$(".graph",$(event.relatedTarget)).html("");
-				ShowGraph($(".graph",$(event.relatedTarget)).attr("id"));
+				ShowGraph($(".graph",$(event.relatedTarget)).attr("id"),false);
 			});
     		LoadData(null,1,"");
 		});
 	</script>
+	
 </html>
